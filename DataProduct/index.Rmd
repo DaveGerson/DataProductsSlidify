@@ -1,0 +1,70 @@
+---
+title       : Community Linkage for Retail Products
+subtitle    : Using ARules, Linkcomm, and igraph
+author      : David Gerson
+job         : Coursera DS Specialization
+framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
+highlighter : highlight.js  # {highlight.js, prettify, highlight}
+hitheme     : tomorrow      # 
+widgets     : []            # {mathjax, quiz, bootstrap}
+mode        : selfcontained # {standalone, draft}
+knit        : slidify::knit2slides
+---
+
+### Using Arules to provide edges
+I begin this analysis by creating graph edges by infering an association between how one products purchase influences the purchase of another product.
+
+```{r , cache=TRUE, warning=FALSE , error=FALSE ,echo=TRUE}
+invisible(library("arules"))
+data(Groceries)
+rules <- apriori(Groceries, parameter=list(support=0.00005, confidence=0.3 , maxlen = 2))
+rules
+rulesDF<-as(rules, "data.frame")
+
+rulesDF$lhs <- unlist(lapply(strsplit(gsub("\\}", "",gsub("\\{", "",(as.character(rulesDF$rules)))), "=>"), "[", 1))
+rulesDF$rhs <- unlist(lapply(strsplit(gsub("\\}", "",gsub("\\{", "",(as.character(rulesDF$rules)))), "=>"), "[", 2))
+rulesDF$lhs <- as.factor(rulesDF$lhs)
+rulesDF$rhs <- as.factor(rulesDF$rhs)
+```
+
+--- .class #id 
+
+### Link trimming
+Lift is used as a metric to trim the dataset down to something much smaller.  This maintains only the most important relationships. 
+
+```{r , cache=TRUE, warning=FALSE , error=FALSE}
+percentileParam<-quantile(rulesDF$lift, c(.75))
+rulesDF_2 <-rulesDF[ which( rulesDF$lift > percentileParam), ]  
+rulesDF_2<-rulesDF
+```
+
+--- .class #id 
+
+### Building a graph
+I load the data to a graph using the igraph package which is the system through which is the easiest way to temporarily persist the data before feeding to the linkcomm analysis.
+```{r , cache=TRUE, warning=FALSE , error=FALSE}
+invisible(library("igraph"))
+df.g <- graph.data.frame(d = data.frame(rulesDF_2$lhs,rulesDF_2$rhs), directed = FALSE)
+
+#Graph for the graph
+plot(df.g, vertex.label = V(df.g)$name)
+```
+
+--- .class #id 
+
+### Running the analysis
+At this stage the only thing left to do is to run the analysis.
+```{r , cache=TRUE , warning=FALSE , error=FALSE}
+invisible(library("linkcomm"))
+
+lc <- getLinkCommunities(data.frame(rulesDF_2$lhs,rulesDF_2$rhs) , hcmethod = "average" , directed = FALSE , verbose = FALSE)
+```
+
+--- .class #id 
+
+### Printing the Graph
+The final graph shows the location of the clusters using the reingold layout.
+
+```{r, fig.show='asis' , results='hide' , echo=TRUE }
+invisible(plot(lc, type = "graph", layout = layout.fruchterman.reingold, verbose = FALSE))
+```

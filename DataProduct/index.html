@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Community Linkage for Retail Products</title>
+  <meta charset="utf-8">
+  <meta name="description" content="Community Linkage for Retail Products">
+  <meta name="author" content="David Gerson">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="./assets/css/ribbons.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="libraries/frameworks/io2012/js/slides" 
+    src="libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+    <h1>Community Linkage for Retail Products</h1>
+    <h2>Using ARules, Linkcomm, and igraph</h2>
+    <p>David Gerson<br/>Coursera DS Specialization</p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <hgroup>
+    <h3>Using Arules to provide edges</h3>
+  </hgroup>
+  <article data-timings="">
+    <p>I begin this analysis by creating graph edges by infering an association between how one products purchase influences the purchase of another product.</p>
+
+<pre><code class="r">invisible(library(&quot;arules&quot;))
+</code></pre>
+
+<pre><code>## Loading required package: Matrix
+## 
+## Attaching package: &#39;arules&#39;
+## 
+## The following objects are masked from &#39;package:base&#39;:
+## 
+##     %in%, write
+</code></pre>
+
+<pre><code class="r">data(Groceries)
+rules &lt;- apriori(Groceries, parameter=list(support=0.00005, confidence=0.3 , maxlen = 2))
+</code></pre>
+
+<pre><code>## 
+## parameter specification:
+##  confidence minval smax arem  aval originalSupport support minlen maxlen
+##         0.3    0.1    1 none FALSE            TRUE   5e-05      1      2
+##  target   ext
+##   rules FALSE
+## 
+## algorithmic control:
+##  filter tree heap memopt load sort verbose
+##     0.1 TRUE TRUE  FALSE TRUE    2    TRUE
+## 
+## apriori - find association rules with the apriori algorithm
+## version 4.21 (2004.05.09)        (c) 1996-2004   Christian Borgelt
+## set item appearances ...[0 item(s)] done [0.00s].
+## set transactions ...[169 item(s), 9835 transaction(s)] done [0.00s].
+## sorting and recoding items ... [169 item(s)] done [0.00s].
+## creating transaction tree ... done [0.00s].
+## checking subsets of size 1 2 done [0.00s].
+## writing ... [375 rule(s)] done [0.00s].
+## creating S4 object  ... done [0.00s].
+</code></pre>
+
+<pre><code class="r">rules
+</code></pre>
+
+<pre><code>## set of 375 rules
+</code></pre>
+
+<pre><code class="r">rulesDF&lt;-as(rules, &quot;data.frame&quot;)
+
+rulesDF$lhs &lt;- unlist(lapply(strsplit(gsub(&quot;\\}&quot;, &quot;&quot;,gsub(&quot;\\{&quot;, &quot;&quot;,(as.character(rulesDF$rules)))), &quot;=&gt;&quot;), &quot;[&quot;, 1))
+rulesDF$rhs &lt;- unlist(lapply(strsplit(gsub(&quot;\\}&quot;, &quot;&quot;,gsub(&quot;\\{&quot;, &quot;&quot;,(as.character(rulesDF$rules)))), &quot;=&gt;&quot;), &quot;[&quot;, 2))
+rulesDF$lhs &lt;- as.factor(rulesDF$lhs)
+rulesDF$rhs &lt;- as.factor(rulesDF$rhs)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h3>Link trimming</h3>
+  </hgroup>
+  <article data-timings="">
+    <p>Lift is used as a metric to trim the dataset down to something much smaller.  This maintains only the most important relationships. </p>
+
+<pre><code class="r">percentileParam&lt;-quantile(rulesDF$lift, c(.75))
+rulesDF_2 &lt;-rulesDF[ which( rulesDF$lift &gt; percentileParam), ]  
+rulesDF_2&lt;-rulesDF
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h3>Building a graph</h3>
+  </hgroup>
+  <article data-timings="">
+    <p>I load the data to a graph using the igraph package which is the system through which is the easiest way to temporarily persist the data before feeding to the linkcomm analysis.</p>
+
+<pre><code class="r">invisible(library(&quot;igraph&quot;))
+df.g &lt;- graph.data.frame(d = data.frame(rulesDF_2$lhs,rulesDF_2$rhs), directed = FALSE)
+
+#Graph for the graph
+plot(df.g, vertex.label = V(df.g)$name)
+</code></pre>
+
+<p><img src="assets/fig/unnamed-chunk-3-1.png" alt="plot of chunk unnamed-chunk-3"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h3>Running the analysis</h3>
+  </hgroup>
+  <article data-timings="">
+    <p>At this stage the only thing left to do is to run the analysis.</p>
+
+<pre><code class="r">invisible(library(&quot;linkcomm&quot;))
+</code></pre>
+
+<pre><code>## Loading required package: RColorBrewer
+## 
+## Welcome to linkcomm version 1.0-11
+## 
+## For a step-by-step guide to using linkcomm functions:
+##    &gt; vignette(topic = &quot;linkcomm&quot;, package = &quot;linkcomm&quot;)
+## To run an interactive demo:
+##    &gt; demo(topic = &quot;linkcomm&quot;, package = &quot;linkcomm&quot;)
+## To cite, see:
+##    &gt; citation(&quot;linkcomm&quot;)
+## NOTE: To use linkcomm, you require read and write permissions in the current directory (see: help(&quot;getwd&quot;), help(&quot;setwd&quot;))
+</code></pre>
+
+<pre><code class="r">lc &lt;- getLinkCommunities(data.frame(rulesDF_2$lhs,rulesDF_2$rhs) , hcmethod = &quot;average&quot; , directed = FALSE , verbose = FALSE)
+</code></pre>
+
+<p><img src="assets/fig/unnamed-chunk-4-1.png" alt="plot of chunk unnamed-chunk-4"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h3>Printing the Graph</h3>
+  </hgroup>
+  <article data-timings="">
+    <p>The final graph shows the location of the clusters using the reingold layout.</p>
+
+<pre><code class="r">invisible(plot(lc, type = &quot;graph&quot;, layout = layout.fruchterman.reingold, verbose = FALSE))
+</code></pre>
+
+<p><img src="assets/fig/unnamed-chunk-5-1.png" alt="plot of chunk unnamed-chunk-5"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='Using Arules to provide edges'>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='Link trimming'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='Building a graph'>
+         3
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=4 title='Running the analysis'>
+         4
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=5 title='Printing the Graph'>
+         5
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  
+  <!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>

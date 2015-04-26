@@ -1,0 +1,11 @@
+base
+rpart
+lattice
+RevoScaleR
+RevoMods
+Revobase
+Matrix
+arules
+igraph
+RColorBrewer
+linkcomm
